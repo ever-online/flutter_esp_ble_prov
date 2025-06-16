@@ -17,6 +17,7 @@ import com.espressif.provisioning.*
 import com.espressif.provisioning.listeners.BleScanListener
 import com.espressif.provisioning.listeners.ProvisionListener
 import com.espressif.provisioning.listeners.WiFiScanListener
+import com.espressif.provisioning.listeners.ResponseListener
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -145,6 +146,7 @@ class Boss {
   private val scanWifiMethod = "scanWifiNetworks"
   private val provisionWifiMethod = "provisionWifi"
   private val platformVersionMethod = "getPlatformVersion"
+  private val sendDataMethod = "sendData"
 
   /**
    * The available scanned BLE devices.
@@ -161,6 +163,7 @@ class Boss {
   private val bleScanner: BleScanManager = BleScanManager(this)
   private val wifiScanner: WifiScanManager = WifiScanManager(this)
   private val wifiProvisioner: WifiProvisionManager = WifiProvisionManager(this)
+  private val sendDataProvisioner: SendDataManager = SendDataManager(this)
 
   private lateinit var platformContext: Context
   lateinit var platformActivity: Activity
@@ -206,6 +209,7 @@ class Boss {
         scanBleMethod -> bleScanner.call(ctx)
         scanWifiMethod -> wifiScanner.call(ctx)
         provisionWifiMethod -> wifiProvisioner.call(ctx)
+        sendDataMethod -> sendDataProvisioner.call(ctx)
         else -> result.notImplemented()
       }
     })
@@ -340,6 +344,40 @@ class WifiProvisionManager(boss: Boss) : ActionManager(boss) {
         }
 
         override fun onProvisioningFailed(e: java.lang.Exception?) {
+          boss.e("onProvisioningFailed")
+          ctx.result.success(false)
+        }
+
+      })
+    }
+  }
+
+}
+
+class SendDataManager(boss: Boss) : ActionManager(boss) {
+  override fun call(ctx: CallContext) {
+    boss.e("sendData ${ctx.call.arguments}")
+    val path = ctx.arg("path") ?: return
+    val data = ctx.arg("data") ?: return
+    val deviceName = ctx.arg("deviceName") ?: return
+    val proofOfPossession = ctx.arg("proofOfPossession") ?: return
+    val conn = boss.connector(deviceName) ?: return
+
+    boss.connect(conn, proofOfPossession) { esp ->
+      boss.d("sendData: start")
+      esp.sendData(path, data, object : ResponseListener {
+        override fun createSessionFailed(e: java.lang.Exception?) {
+          boss.e("wifiprovision createSessionFailed")
+        }
+
+        override fun onSuccess(byte[] returnData)
+        {
+          boss.d("succes")
+                    ctx.result.success(true)
+
+        }
+
+        override fun onFailure(e: java.lang.Exception?) {
           boss.e("onProvisioningFailed")
           ctx.result.success(false)
         }

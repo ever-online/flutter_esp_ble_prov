@@ -6,6 +6,7 @@ public class SwiftFlutterEspBleProvPlugin: NSObject, FlutterPlugin {
     private let SCAN_BLE_DEVICES = "scanBleDevices"
     private let SCAN_WIFI_NETWORKS = "scanWifiNetworks"
     private let PROVISION_WIFI = "provisionWifi"
+    private let SEND_DATA = "sendData"
     
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "flutter_esp_ble_prov", binaryMessenger: registrar.messenger())
@@ -36,6 +37,17 @@ public class SwiftFlutterEspBleProvPlugin: NSObject, FlutterPlugin {
                 ssid: ssid,
                 passphrase: passphrase
             )
+        } else if (call.method == SEND_DATA) {
+            let deviceName = arguments["deviceName"] as! String
+            let proofOfPossession = arguments["proofOfPossession"] as! String
+            let path = arguments["path"] as! String
+            let data = arguments["data"] as! String
+            provisionService.sendData(
+                deviceName: deviceName,
+                proofOfPossession: proofOfPossession,
+                path: path,
+                data: data
+            )
         } else {
             result("iOS " + UIDevice.current.systemVersion)
         }
@@ -48,6 +60,7 @@ protocol ProvisionService {
     func searchDevices(prefix: String) -> Void
     func scanWifiNetworks(deviceName: String, proofOfPossession: String) -> Void
     func provision(deviceName: String, proofOfPossession: String, ssid: String, passphrase: String) -> Void
+    func sendData(deviceName: String, proofOfPossession: String, path:String, data:String) -> Void
 }
 
 private class BLEProvisionService: ProvisionService {
@@ -81,6 +94,26 @@ private class BLEProvisionService: ProvisionService {
             }
         }
     }
+
+    func sendData(deviceName: String, proofOfPossession: String, path:String, data:String) {
+        let dataData:Data = Data(data.utf8)
+        self.connect(deviceName: deviceName, proofOfPossession: proofOfPossession) {
+            device in
+            device?.sendData(path: path, data: dataData) { returnData, error in
+            device?.disconnect()
+            if let str = String(data: returnData!, encoding: .utf8) {
+    NSLog("Successfully decoded: \(str)")
+self.result(true)
+            } else {
+    
+                NSLog("Error sending data, deviceName: \(deviceName) ")
+                self.result(false)
+                
+                }
+            }
+        }
+    }
+    
     
     func provision(deviceName: String, proofOfPossession: String, ssid: String, passphrase: String) {
         self.connect(deviceName: deviceName, proofOfPossession: proofOfPossession){

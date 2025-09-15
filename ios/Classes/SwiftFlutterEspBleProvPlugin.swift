@@ -101,7 +101,12 @@ private class BLEProvisionService: ProvisionService {
             device in
             device?.sendData(path: path, data: dataData) { returnData, error in
             device?.disconnect()
-            if let str = String(data: returnData!, encoding: .utf8) {
+            guard let returnData = returnData else {
+                NSLog("Error: returnData is nil, deviceName: \(deviceName)")
+                self.result(false)
+                return
+            }
+            if let str = String(data: returnData, encoding: .utf8) {
     NSLog("Successfully decoded: \(str)")
 self.result(true)
             } else {

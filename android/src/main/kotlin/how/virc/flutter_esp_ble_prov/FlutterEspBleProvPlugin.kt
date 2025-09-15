@@ -365,12 +365,15 @@ class SendDataManager(boss: Boss) : ActionManager(boss) {
 
     boss.connect(conn, proofOfPossession) { esp ->
       boss.d("sendData: start")
-      esp.sendData(path, data, object : ResponseListener {
-        override fun createSessionFailed(e: java.lang.Exception?) {
-          boss.e("wifiprovision createSessionFailed")
-        }
 
-        override fun onSuccess(byte[] returnData)
+
+
+      esp.sendDataToCustomEndPoint(path,data.toByteArray(), object : ResponseListener {
+//        override fun createSessionFailed(e: java.lang.Exception?) {
+//          boss.e("wifiprovision createSessionFailed")
+//        }
+
+        override fun onSuccess(p0: ByteArray?)
         {
           boss.d("succes")
                     ctx.result.success(true)
